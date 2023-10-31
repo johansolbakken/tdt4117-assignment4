@@ -1,0 +1,21 @@
+digraph Trie {
+    node [shape=circle]
+    "rootintelligent" [label="intelligent", style=filled, fillcolor=yellow];
+    "root" -> "rootintelligent" [label=""];
+    "rootb" [label="b", style=filled, fillcolor=white];
+    "root" -> "rootb" [label=""];
+    "rootbehaviour" [label="ehaviour", style=filled, fillcolor=yellow];
+    "rootb" -> "rootbehaviour" [label=""];
+    "rootbrain" [label="rain", style=filled, fillcolor=yellow];
+    "rootb" -> "rootbrain" [label=""];
+    "rootp" [label="p", style=filled, fillcolor=white];
+    "root" -> "rootp" [label=""];
+    "rootpeople" [label="eople", style=filled, fillcolor=yellow];
+    "rootp" -> "rootpeople" [label=""];
+    "rootproduct" [label="roduct", style=filled, fillcolor=yellow];
+    "rootp" -> "rootproduct" [label=""];
+    "rootmind" [label="mind", style=filled, fillcolor=yellow];
+    "root" -> "rootmind" [label=""];
+    "roothuman" [label="human", style=filled, fillcolor=yellow];
+    "root" -> "roothuman" [label=""];
+}
