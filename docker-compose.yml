@@ -19,6 +19,8 @@ services:
       - elastic_password=p2iFCHUbC7ze1QoIMVw
       - kibana_system_password=p2iFCHUbC7ze1QoIMVw
     networks: ['stack']
+    volumes:
+      - ./esdata1:/usr/share/elasticsearch/data
 
   kibana:
     container_name: elastic-space-kibana
@@ -42,8 +44,12 @@ services:
       - 8888:8888
     networks: ['stack']
     command: start-notebook.sh
+    volumes:
+      - ./notebooks:/home/jovyan/work
 
 
 networks: {stack: {}}
 
-
+volumes:
+  esdata1:
+    driver: local

@@ -3,14 +3,47 @@
 import os
 import string
 import math
+import argparse
 from nltk.stem import PorterStemmer
 
-class SimpleIndexer:
+class Trie:
     def __init__(self) -> None:
+        self.__root = dict()
+    
+    def add_word(self, word:str):
+        current = self.__root
+        for letter in word:
+            if letter not in current:
+                current[letter] = dict()
+            current = current[letter]
+        current["is_word"] = True
+
+    def get_completions(self, prefix:str):
+        current = self.__root
+        for letter in prefix:
+            if letter not in current:
+                return []
+            current = current[letter]
+        completions = []
+        self.__get_completions(current, prefix, completions)
+        return completions
+    
+    def __get_completions(self, current, prefix, completions):
+        if "is_word" in current:
+            completions.append(prefix)
+        for letter in current:
+            if letter != "is_word":
+                self.__get_completions(current[letter], prefix + letter, completions)
+
+class SimpleIndexer:
+    def __init__(self, noun_groups=False, query_expansion=False) -> None:
+        self.__noun_groups = noun_groups
+        self.__query_expansion = query_expansion
         self.__documents = []
         self.__names = dict()
         self.__index = {}
         self.__id = 0
+        self.__trie = Trie()
         self.__stop_words = ['a', 'about', 'above', 'across', 'after', 'again', 'against', 'all', 'almost', 'alone', 'along', 'already', 'also', 'although', 'always', 'among', 'an', 'and', 'another', 'any', 'anybody', 'anyone', 'anything', 'anywhere', 'are', 'area', 'areas', 'around', 'as', 'ask', 'asked', 'asking', 'asks', 'at', 'away', 'b', 'back', 'backed', 'backing', 'backs', 'be', 'became', 'because', 'become', 'becomes', 'been', 'before', 'began', 'behind', 'being', 'beings', 'best', 'better', 'between', 'big', 'both', 'but', 'by', 'c', 'came', 'can', 'cannot', 'case', 'cases', 'certain', 'certainly', 'clear', 'clearly', 'come', 'could', 'd', 'did', 'differ', 'different', 'differently', 'do', 'does', 'done', 'down', 'down', 'downed', 'downing', 'downs', 'during', 'e', 'each', 'early', 'either', 'end', 'ended', 'ending', 'ends', 'enough', 'even', 'evenly', 'ever', 'every', 'everybody', 'everyone', 'everything', 'everywhere', 'f', 'face', 'faces', 'fact', 'facts', 'far', 'felt', 'few', 'find', 'finds', 'first', 'for', 'four', 'from', 'full', 'fully', 'further', 'furthered', 'furthering', 'furthers', 'g', 'gave', 'general', 'generally', 'get', 'gets', 'give', 'given', 'gives', 'go', 'going', 'good', 'goods', 'got', 'great', 'greater', 'greatest', 'group', 'grouped', 'grouping', 'groups', 'h', 'had', 'has', 'have', 'having', 'he', 'her', 'here', 'herself', 'high', 'high', 'high', 'higher', 'highest', 'him', 'himself', 'his', 'how', 'however', 'i', 'if', 'important', 'in', 'interest', 'interested', 'interesting', 'interests', 'into', 'is', 'it', 'its', 'itself', 'j', 'just', 'k', 'keep', 'keeps', 'kind', 'knew', 'know', 'known', 'knows', 'l', 'large', 'largely', 'last', 'later', 'latest', 'least', 'less', 'let', 'lets', 'like', 'likely', 'long', 'longer', 'longest', 'm', 'made', 'make', 'making', 'man', 'many', 'may', 'me', 'member', 'members', 'men', 'might', 'more', 'most', 'mostly', 'mr', 'mrs', 'much', 'must', 'my', 'myself', 'n', 'necessary', 'need', 'needed', 'needing', 'needs', 'never', 'new', 'new', 'newer', 'newest', 'next', 'no', 'nobody', 'non', 'noone', 'not', 'nothing', 'now', 'nowhere', 'number', 'numbers', 'o', 'of', 'off', 'often', 'old', 'older', 'oldest', 'on', 'once', 'one', 'only', 'open', 'opened', 'opening', 'opens', 'or', 'order', 'ordered', 'ordering', 'orders', 'other', 'others', 'our', 'out', 'over', 'p', 'part', 'parted', 'parting', 'parts', 'per', 'perhaps', 'place', 'places', 'point', 'pointed', 'pointing', 'points', 'possible', 'present', 'presented', 'presenting', 'presents', 'problem', 'problems', 'put', 'puts', 'q', 'quite', 'r', 'rather', 'really', 'right', 'right', 'room', 'rooms', 's', 'said', 'same', 'saw', 'say', 'says', 'second', 'seconds', 'see', 'seem', 'seemed', 'seeming', 'seems', 'sees', 'several', 'shall', 'she', 'should', 'show', 'showed', 'showing', 'shows', 'side', 'sides', 'since', 'small', 'smaller', 'smallest', 'so', 'some', 'somebody', 'someone', 'something', 'somewhere', 'state', 'states', 'still', 'still', 'such', 'sure', 't', 'take', 'taken', 'than', 'that', 'the', 'their', 'them', 'then', 'there', 'therefore', 'these', 'they', 'thing', 'things', 'think', 'thinks', 'this', 'those', 'though', 'thought', 'thoughts', 'three', 'through', 'thus', 'to', 'today', 'together', 'too', 'took', 'toward', 'turn', 'turned', 'turning', 'turns', 'two', 'u', 'under', 'until', 'up', 'upon', 'us', 'use', 'used', 'uses', 'v', 'very', 'w', 'want', 'wanted', 'wanting', 'wants', 'was', 'way', 'ways', 'we', 'well', 'wells', 'went', 'were', 'what', 'when', 'where', 'whether', 'which', 'while', 'who', 'whole', 'whose', 'why', 'will', 'with', 'within', 'without', 'work', 'worked', 'working', 'works', 'would', 'x', 'y', 'year', 'years', 'yet', 'you', 'young', 'younger', 'youngest', 'your', 'yours', 'z']
         self.__stemmer = PorterStemmer()
         self.__stop_words = [self.__stemmer.stem(word) for word in self.__stop_words]
@@ -23,6 +56,7 @@ class SimpleIndexer:
         for word in vocabulary:
             if word not in self.__index:
                 self.__index[word] = dict()
+                self.__trie.add_word(word)
             self.__index[word][id] = tokens.count(word)
         self.__names[name] = id
 
@@ -47,6 +81,12 @@ class SimpleIndexer:
         document = document.split()
         document = [self.__stemmer.stem(word) for word in document]
         document = [word for word in document if word not in self.__stop_words]
+        if self.__noun_groups:
+            noun_groups = []
+            for l in [2, 3]:
+                for i in range(len(document) - l + 1):
+                    noun_groups.append(" ".join(document[i:i+l]))
+            document = document + noun_groups
         return document
 
     def id(self):
@@ -70,6 +110,17 @@ class SimpleIndexer:
         return None
     
     def search(self, query: str):
+        if self.__query_expansion:
+            query = query.lower().split()
+            completion = []
+            for word in query:
+                if word[-1] == "*":
+                    completion.append(word[:-1])
+            for word in completion:
+                query.remove(word + "*")
+                query.extend(self.__trie.get_completions(word))
+            print(query)
+            query = " ".join(query)
         query = self.preprocess(query)
         query = sorted(set(query))
         scores = dict()
@@ -84,14 +135,22 @@ class SimpleIndexer:
             if doc_id == id:
                 return name
         return None
-
+    
 def main():
     if not os.path.exists("DataAssignment4"):
         print("DataAssignment4 folder not found")
         return
-    
-    indexer = SimpleIndexer()
-    
+
+
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--noun_groups", action="store_true")
+    arg_parser.add_argument("--query_expansion", action="store_true")
+    args = arg_parser.parse_args()
+    indexer = SimpleIndexer(
+        noun_groups=args.noun_groups,
+        query_expansion=args.query_expansion
+    )
+
     for file in os.listdir("DataAssignment4"):
         if file.endswith(".txt"):
             print("Indexing", file)
@@ -100,9 +159,9 @@ def main():
 
     queries = ["claim", "claim*", "claim of duty"]
     for query in queries:
+        print("Query:", query)
         scores = indexer.search(query)
         scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        print("Query:", query)
         for doc_id, score in scores:
             print(f"\t{indexer.name(doc_id)} with score {score}")
 
